@@ -9,7 +9,6 @@ on:
 env:
   REGISTRY: harbor.5845.cn
   PROJECT: myapi
-  IMAGE_NAME: ${{ env.REGISTRY }}/${{ env.PROJECT }}/myapi
 
 jobs:
   test:
@@ -52,6 +51,8 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     permissions:
       contents: read
+    env:
+      IMAGE_NAME: ${{ env.REGISTRY }}/${{ env.PROJECT }}/myapi
       
     steps:
     - name: Checkout code
@@ -93,6 +94,8 @@ jobs:
     needs: build-and-push
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    env:
+      IMAGE_NAME: ${{ env.REGISTRY }}/${{ env.PROJECT }}/myapi
     
     steps:
     - name: Deploy to server

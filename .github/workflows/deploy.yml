@@ -7,11 +7,12 @@ on:
 env:
   REGISTRY: harbor.5845.cn
   PROJECT: myapi
-  IMAGE_NAME: ${{ env.REGISTRY }}/${{ env.PROJECT }}/myapi
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      IMAGE_NAME: ${{ env.REGISTRY }}/${{ env.PROJECT }}/myapi
     
     steps:
     - name: Checkout code
