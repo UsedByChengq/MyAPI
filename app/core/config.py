@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     
     # 静态文件配置
     static_img_dir: str = "static/images"
-    base_image_url: str = "https://myapi.5845.cn/static/images/"
+    base_image_url: str = "https://www.5845.cn/static/images/"  # 可通过BASE_IMAGE_URL环境变量覆盖
     
     # 网络请求配置
     request_timeout: int = 10

@@ -173,15 +173,24 @@ docker-compose up -d
 
 ## 配置说明
 
+### 图片URL配置
+
+为了支持多个5845.cn域名访问图片，项目使用独立的图片域名配置：
+
+- **BASE_URL**: 应用主域名（如：https://myapi.5845.cn）
+- **BASE_IMAGE_URL**: 图片访问域名（如：https://www.5845.cn/static/images/）
+
+这样配置后，所有5845.cn的子域名都可以访问图片资源。
+
 | 配置项 | 说明 | 默认值 |
 |--------|------|--------|
 | `APP_NAME` | 应用名称 | MyAPI |
 | `APP_VERSION` | 应用版本 | 1.0.0 |
 | `DEBUG` | 调试模式 | false |
 | `BASE_URL` | 应用域名 | https://myapi.5845.cn |
+| `BASE_IMAGE_URL` | 图片访问域名 | https://www.5845.cn/static/images/ |
 | `CORS_ORIGINS` | CORS允许的源 | ["*"] |
 | `STATIC_IMG_DIR` | 静态图片目录 | static/images |
-| `BASE_IMAGE_URL` | 图片基础URL | https://yourdomain.com/static/images/ |
 | `REQUEST_TIMEOUT` | 请求超时时间 | 10 |
 | `ALLOWED_DOMAINS` | 允许的域名 | ["mp.weixin.qq.com"] |
 
