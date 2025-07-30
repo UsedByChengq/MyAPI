@@ -21,7 +21,7 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
       
-        - name: Verify Docker
+    - name: Verify Docker
       run: |
         # 验证Docker是否正常工作
         docker --version
