@@ -11,8 +11,6 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    env:
-      IMAGE_NAME: ${{ env.REGISTRY }}/${{ env.PROJECT }}/myapi
     
     steps:
     - name: Checkout code
@@ -33,7 +31,7 @@ jobs:
       with:
         context: .
         push: true
-        tags: ${{ env.IMAGE_NAME }}:main
+        tags: ${{ env.REGISTRY }}/${{ env.PROJECT }}/myapi:main
         cache-from: type=gha
         cache-to: type=gha,mode=max
         
@@ -55,7 +53,7 @@ jobs:
           docker system prune -f
           
           # 拉取最新镜像
-          docker pull ${{ env.IMAGE_NAME }}:main
+          docker pull ${{ env.REGISTRY }}/${{ env.PROJECT }}/myapi:main
           
           # 创建docker-compose.yml
           cat > docker-compose.yml << 'EOF'
@@ -63,7 +61,7 @@ jobs:
           
           services:
             myapi:
-              image: ${{ env.IMAGE_NAME }}:main
+              image: ${{ env.REGISTRY }}/${{ env.PROJECT }}/myapi:main
               ports:
                 - "5201:5201"
               environment:
