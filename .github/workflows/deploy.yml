@@ -5,7 +5,8 @@ on:
     branches: [ main ]
 
 env:
-  REGISTRY: harbor.5845.cn
+  REGISTRY: registry.cn-shanghai.aliyuncs.com
+  NAMESPACE: docker_for_chengq
   PROJECT: myapi
   DOCKER_BUILDKIT: 1
 
@@ -20,68 +21,25 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
       
-    - name: Configure Docker for Harbor
-      run: |
-        # 配置Docker使用不安全的registry
-        sudo mkdir -p /etc/docker
-        echo '{"insecure-registries": ["${{ env.REGISTRY }}"]}' | sudo tee /etc/docker/daemon.json
-        sudo systemctl restart docker
-        sleep 5
-        
-        # 测试网络连接
-        echo "测试网络连接..."
-        curl -I http://${{ env.REGISTRY }} || echo "HTTP连接失败，尝试HTTPS..."
-        curl -I https://${{ env.REGISTRY }} || echo "HTTPS连接也失败"
-        
-        # 显示DNS解析结果
-        echo "DNS解析结果："
-        nslookup ${{ env.REGISTRY }} || echo "DNS解析失败"
-      
     - name: Build Docker image
       run: |
         # 构建镜像
         echo "开始构建镜像..."
-        docker build -t ${{ env.REGISTRY }}/${{ env.PROJECT }}/myapi:main .
+        docker build -t ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.PROJECT }}:main .
         echo "镜像构建完成！"
         
-    - name: Try Harbor login and push
+    - name: Log in to Alibaba Cloud Container Registry
       run: |
-        # 尝试登录到Harbor Registry
-        echo "尝试登录Harbor..."
-        echo ${{ secrets.HARBOR_PASSWORD }} | docker login ${{ env.REGISTRY }} -u ${{ secrets.HARBOR_USERNAME }} --password-stdin && {
-          echo "✅ 登录成功！"
-          
-          # 推送镜像
-          if docker push ${{ env.REGISTRY }}/${{ env.PROJECT }}/myapi:main; then
-            echo "✅ 镜像推送成功！"
-            echo "HARBOR_PUSH_SUCCESS=true" >> $GITHUB_ENV
-          else
-            echo "❌ 推送失败"
-            echo "HARBOR_PUSH_SUCCESS=false" >> $GITHUB_ENV
-          fi
-        } || {
-          echo "❌ 登录失败，尝试HTTP..."
-          echo ${{ secrets.HARBOR_PASSWORD }} | docker login http://${{ env.REGISTRY }} -u ${{ secrets.HARBOR_USERNAME }} --password-stdin && {
-            echo "✅ HTTP登录成功！"
-            
-            if docker push ${{ env.REGISTRY }}/${{ env.PROJECT }}/myapi:main; then
-              echo "✅ 镜像推送成功！"
-              echo "HARBOR_PUSH_SUCCESS=true" >> $GITHUB_ENV
-            else
-              echo "❌ 推送失败"
-              echo "HARBOR_PUSH_SUCCESS=false" >> $GITHUB_ENV
-            fi
-          } || {
-            echo "❌ HTTP登录也失败"
-            echo "HARBOR_PUSH_SUCCESS=false" >> $GITHUB_ENV
-          }
-        }
+        # 登录到阿里云容器镜像服务
+        echo "登录到阿里云容器镜像服务..."
+        echo ${{ secrets.ALIYUN_PASSWORD }} | docker login ${{ env.REGISTRY }} -u ${{ secrets.ALIYUN_USERNAME }} --password-stdin
         
-        # 如果推送失败，标记但继续部署
-        if [ "$HARBOR_PUSH_SUCCESS" = "false" ]; then
-          echo "⚠️ Harbor推送失败，但继续部署流程..."
-          echo "将在服务器上重新构建镜像"
-        fi
+    - name: Push Docker image
+      run: |
+        # 推送镜像到阿里云仓库
+        echo "推送镜像到阿里云仓库..."
+        docker push ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.PROJECT }}:main
+        echo "✅ 镜像推送成功！"
         
     - name: Deploy to server
       uses: appleboy/ssh-action@v1.0.3
@@ -91,11 +49,9 @@ jobs:
         key: ${{ secrets.SERVER_SSH_KEY }}
         port: ${{ secrets.SERVER_PORT }}
         script: |
-          # 配置Docker使用不安全的registry
-          sudo mkdir -p /etc/docker
-          echo '{"insecure-registries": ["${{ env.REGISTRY }}"]}' | sudo tee /etc/docker/daemon.json
-          sudo systemctl restart docker
-          sleep 5
+          # 登录到阿里云容器镜像服务
+          echo "登录到阿里云容器镜像服务..."
+          echo ${{ secrets.ALIYUN_PASSWORD }} | docker login ${{ env.REGISTRY }} -u ${{ secrets.ALIYUN_USERNAME }} --password-stdin
           
           # 停止旧容器
           docker-compose down || true
@@ -103,24 +59,9 @@ jobs:
           # 清理旧镜像
           docker system prune -f
           
-          # 尝试从Harbor拉取镜像，如果失败则在服务器上构建
-          echo "尝试从Harbor拉取镜像..."
-          if docker pull ${{ env.REGISTRY }}/${{ env.PROJECT }}/myapi:main; then
-            echo "✅ 镜像拉取成功！"
-            IMAGE_SOURCE="harbor"
-          else
-            echo "❌ 镜像拉取失败，在服务器上构建..."
-            
-            # 在服务器上重新构建镜像
-            if [ ! -d "temp-build" ]; then
-              git clone https://github.com/UsedByChengq/MyAPI.git temp-build
-            fi
-            cd temp-build
-            git pull origin main
-            docker build -t ${{ env.REGISTRY }}/${{ env.PROJECT }}/myapi:main .
-            cd ..
-            IMAGE_SOURCE="local"
-          fi
+          # 拉取最新镜像
+          echo "拉取最新镜像..."
+          docker pull ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.PROJECT }}:main
           
           # 创建docker-compose.yml
           cat > docker-compose.yml << 'EOF'
@@ -128,7 +69,7 @@ jobs:
           
           services:
             myapi:
-              image: ${{ env.REGISTRY }}/${{ env.PROJECT }}/myapi:main
+              image: ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.PROJECT }}:main
               ports:
                 - "5201:5201"
               environment:
@@ -158,7 +99,7 @@ jobs:
             echo "✅ MyAPI部署成功！"
             echo "🌐 服务地址: http://${{ secrets.SERVER_HOST }}:5201"
             echo "📚 API文档: http://${{ secrets.SERVER_HOST }}:5201/docs"
-            echo "📦 镜像来源: $IMAGE_SOURCE"
+            echo "📦 镜像来源: 阿里云容器镜像服务"
           else
             echo "❌ 服务启动失败"
             docker-compose logs

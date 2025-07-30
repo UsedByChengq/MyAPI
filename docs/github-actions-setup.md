@@ -1,221 +1,148 @@
 # GitHub Actions 自动部署配置指南
 
-本文档说明如何配置 GitHub Actions 实现代码提交后自动构建 Docker 镜像并部署到服务器。
+本指南将帮助您配置 GitHub Actions 实现 MyAPI 的自动部署到服务器。
 
-## 📋 前置条件
+## 前置条件
 
-1. **GitHub 仓库**: 确保代码已推送到 GitHub
-2. **Harbor 私有仓库**: 使用 [Harbor](http://harbor.5845.cn/) 作为私有镜像仓库
-3. **服务器**: 需要一台运行 Docker 的服务器
-4. **GitHub Secrets**: 需要在仓库中配置服务器连接信息和Harbor认证信息
+### 1. 服务器准备
+- 服务器已安装 Docker 和 Docker Compose
+- 服务器可以通过 SSH 访问
+- 服务器有足够的磁盘空间和内存
 
-## 🔧 配置步骤
+### 2. 阿里云容器镜像服务
+- 已创建阿里云容器镜像服务实例
+- 已创建命名空间和仓库
+- 已获取访问凭证
+
+### 3. GitHub 仓库
+- 代码已推送到 GitHub 仓库
+- 仓库已启用 GitHub Actions
+
+## 配置步骤
 
 ### 1. 配置 GitHub Secrets
 
-在 GitHub 仓库中，进入 `Settings` → `Secrets and variables` → `Actions`，添加以下 secrets：
+在 GitHub 仓库的 Settings > Secrets and variables > Actions 中添加以下 secrets：
 
-| Secret 名称 | 说明 | 示例值 |
-|------------|------|--------|
-| `HARBOR_USERNAME` | Harbor用户名 | `admin` |
-| `HARBOR_PASSWORD` | Harbor密码 | `your-password` |
-| `SERVER_HOST` | 服务器IP地址 | `192.168.1.100` |
-| `SERVER_USERNAME` | SSH用户名 | `root` |
-| `SERVER_SSH_KEY` | SSH私钥内容 | `-----BEGIN OPENSSH PRIVATE KEY-----...` |
-| `SERVER_PORT` | SSH端口 | `22` |
+#### 服务器配置
+- `SERVER_HOST`: 服务器IP地址或域名
+- `SERVER_USERNAME`: SSH用户名
+- `SERVER_PORT`: SSH端口（通常是22）
+- `SERVER_SSH_KEY`: SSH私钥内容
 
-### 2. Harbor 仓库配置
+#### 阿里云容器镜像服务配置
+- `ALIYUN_USERNAME`: 阿里云账号用户名（通常是邮箱）
+- `ALIYUN_PASSWORD`: 阿里云容器镜像服务密码
 
-确保在 Harbor 中已创建项目：
-- **项目名称**: `myapi`
-- **访问级别**: 私有
-- **镜像名称**: `myapi`
-- **完整镜像路径**: `harbor.5845.cn/myapi/myapi`
+### 2. 获取 SSH 私钥
 
-### 3. 生成 SSH 密钥对
-
-如果还没有 SSH 密钥，请生成一对：
+在本地生成 SSH 密钥对（如果还没有）：
 
 ```bash
-# 生成 SSH 密钥对
-ssh-keygen -t ed25519 -C "github-actions@example.com"
-
-# 将公钥添加到服务器
-ssh-copy-id -i ~/.ssh/id_ed25519.pub username@server-ip
-
-# 将私钥内容复制到 GitHub Secrets
-cat ~/.ssh/id_ed25519
+ssh-keygen -t rsa -b 4096 -C "your_email@example.com"
 ```
 
-### 4. 服务器准备
-
-确保服务器已安装 Docker 和 Docker Compose：
+将公钥添加到服务器的 `~/.ssh/authorized_keys`：
 
 ```bash
-# 安装 Docker
-curl -fsSL https://get.docker.com | sh
-
-# 安装 Docker Compose
-sudo curl -L "https://github.com/docker/compose/releases/download/v2.20.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-sudo chmod +x /usr/local/bin/docker-compose
-
-# 启动 Docker 服务
-sudo systemctl start docker
-sudo systemctl enable docker
+ssh-copy-id username@server_ip
 ```
 
-#### 配置Docker使用不安全的Harbor Registry
-
-由于Harbor使用自签名证书，需要配置Docker允许不安全的registry：
+将私钥内容复制到 GitHub Secrets 的 `SERVER_SSH_KEY` 中：
 
 ```bash
-# 方法1：使用提供的脚本（推荐）
-sudo ./scripts/setup-docker-registry.sh
-
-# 方法2：手动配置
-sudo mkdir -p /etc/docker
-echo '{"insecure-registries": ["harbor.5845.cn"]}' | sudo tee /etc/docker/daemon.json
-sudo systemctl restart docker
+cat ~/.ssh/id_rsa
 ```
 
-### 5. 创建部署目录
+### 3. 配置阿里云容器镜像服务
 
-在服务器上创建部署目录：
+1. 登录阿里云控制台
+2. 进入容器镜像服务
+3. 创建命名空间（如：docker_for_chengq）
+4. 创建仓库（如：myapi）
+5. 获取登录凭证
+
+### 4. 验证配置
+
+推送代码到 `main` 分支，GitHub Actions 将自动：
+
+1. 运行测试
+2. 构建 Docker 镜像
+3. 推送到阿里云容器镜像服务
+4. 部署到服务器
+
+## 工作流程说明
+
+### 测试阶段
+- 安装 Python 依赖
+- 运行 pytest 测试
+- 生成覆盖率报告
+
+### 构建阶段
+- 构建 Docker 镜像
+- 登录阿里云容器镜像服务
+- 推送镜像到仓库
+
+### 部署阶段
+- 连接到服务器
+- 登录阿里云容器镜像服务
+- 拉取最新镜像
+- 启动服务
+
+## 故障排除
+
+### 1. SSH 连接失败
+- 检查服务器IP和端口
+- 验证SSH密钥是否正确
+- 确认服务器防火墙设置
+
+### 2. 镜像推送失败
+- 检查阿里云账号和密码
+- 确认仓库权限设置
+- 验证网络连接
+
+### 3. 服务启动失败
+- 检查服务器Docker状态
+- 查看容器日志
+- 确认端口是否被占用
+
+## 手动部署
+
+如果需要手动部署，可以使用部署脚本：
 
 ```bash
-mkdir -p /opt/myapi
-cd /opt/myapi
+# 设置环境变量
+export ALIYUN_USERNAME="your_username"
+export ALIYUN_PASSWORD="your_password"
+
+# 运行部署脚本
+./scripts/deploy.sh
 ```
 
-## 🚀 工作流程
+## 监控和维护
 
-### 自动部署流程
-
-1. **代码推送**: 向 `main` 分支推送代码
-2. **触发构建**: GitHub Actions 自动触发构建流程
-3. **构建镜像**: 构建 Docker 镜像并推送到 Harbor 私有仓库
-4. **部署到服务器**: 通过 SSH 连接到服务器并部署新镜像
-5. **健康检查**: 验证服务是否正常启动
-
-### 手动部署
-
-如果需要手动部署，可以使用提供的部署脚本：
-
+### 1. 查看服务状态
 ```bash
-# 在服务器上运行
-./scripts/deploy.sh [镜像标签]
-```
-
-## 📁 文件结构
-
-```
-.github/
-└── workflows/
-    ├── ci-cd.yml      # 完整的CI/CD流程（包含测试）
-    └── deploy.yml     # 简化的自动部署流程
-
-scripts/
-└── deploy.sh         # 服务器端部署脚本
-
-docs/
-└── github-actions-setup.md  # 本文档
-```
-
-## 🔍 故障排除
-
-### 常见问题
-
-1. **Harbor 认证失败**
-   - 检查 Harbor 用户名和密码是否正确
-   - 确认用户有推送镜像到 `myapi` 项目的权限
-   - 检查 Harbor 服务是否正常运行
-
-2. **SSH 连接失败**
-   - 检查服务器 IP 和端口是否正确
-   - 确认 SSH 密钥已正确配置
-   - 检查服务器防火墙设置
-
-3. **Docker 镜像拉取失败**
-   - 确认服务器可以访问 Harbor 仓库
-   - 检查网络连接和DNS解析
-   - 确认服务器已登录到 Harbor
-   - 检查Docker是否配置了insecure-registries
-   - 运行 `sudo ./scripts/setup-docker-registry.sh` 配置Docker
-
-4. **服务启动失败**
-   - 查看容器日志：`docker-compose logs myapi`
-   - 检查端口是否被占用
-   - 确认环境变量配置正确
-
-### 查看部署状态
-
-```bash
-# 查看容器状态
 docker-compose ps
-
-# 查看容器日志
-docker-compose logs -f myapi
-
-# 检查服务健康状态
-curl -f http://localhost:5201/docs
+docker-compose logs
 ```
 
-## 📊 监控和日志
-
-### GitHub Actions 日志
-
-在 GitHub 仓库的 `Actions` 标签页可以查看：
-- 构建状态
-- 部署日志
-- 错误信息
-
-### Harbor 镜像管理
-
-在 [Harbor 控制台](http://harbor.5845.cn/) 可以：
-- 查看镜像版本
-- 管理镜像标签
-- 设置镜像扫描策略
-- 配置镜像复制规则
-
-### 服务器监控
-
+### 2. 更新服务
 ```bash
-# 查看系统资源使用情况
-docker stats
-
-# 查看容器资源使用
-docker stats myapi
-
-# 查看磁盘使用情况
-df -h
+docker-compose pull
+docker-compose up -d
 ```
 
-## 🔒 安全建议
+### 3. 回滚服务
+```bash
+docker-compose down
+docker-compose up -d
+```
 
-1. **Harbor 安全**:
-   - 使用强密码
-   - 定期更新 Harbor 版本
-   - 配置镜像扫描
-   - 设置访问控制策略
+## 安全建议
 
-2. **服务器安全**:
-   - 使用专用用户进行部署
-   - 限制 SSH 访问
-   - 定期更新系统
-   - 监控系统日志
-
-3. **镜像安全**:
-   - 定期更新基础镜像
-   - 扫描镜像漏洞
-   - 使用最小化基础镜像
-   - 定期清理旧镜像
-
-## 📞 支持
-
-如果遇到问题，请：
-
-1. 查看 GitHub Actions 日志
-2. 检查 Harbor 镜像仓库状态
-3. 查看服务器容器日志
-4. 确认所有配置是否正确
-5. 联系技术支持 
+1. 定期更新 SSH 密钥
+2. 使用强密码
+3. 限制服务器访问权限
+4. 监控服务日志
+5. 定期备份数据 

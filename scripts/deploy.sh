@@ -1,14 +1,15 @@
 #!/bin/bash
 
-# MyAPI 部署脚本
-# 使用方法: ./deploy.sh [镜像标签]
+# MyAPI 自动部署脚本
+# 用于在服务器上部署 MyAPI 服务
 
 set -e
 
 # 配置变量
-REGISTRY="harbor.5845.cn"
+REGISTRY="registry.cn-shanghai.aliyuncs.com"
+NAMESPACE="docker_for_chengq"
 PROJECT="myapi"
-IMAGE_NAME="${REGISTRY}/${PROJECT}/myapi"
+IMAGE_NAME="${REGISTRY}/${NAMESPACE}/${PROJECT}"
 TAG=${1:-main}
 FULL_IMAGE_NAME="${IMAGE_NAME}:${TAG}"
 
@@ -21,12 +22,16 @@ if ! docker info > /dev/null 2>&1; then
     exit 1
 fi
 
-# 配置Docker使用不安全的registry（解决TLS证书问题）
-echo "🔧 配置Docker registry设置..."
-sudo mkdir -p /etc/docker
-echo "{\"insecure-registries\": [\"${REGISTRY}\"]}" | sudo tee /etc/docker/daemon.json
-sudo systemctl restart docker
-sleep 5
+# 登录到阿里云容器镜像服务
+echo "🔐 登录到阿里云容器镜像服务..."
+if [ -z "$ALIYUN_USERNAME" ] || [ -z "$ALIYUN_PASSWORD" ]; then
+    echo "❌ 请设置环境变量 ALIYUN_USERNAME 和 ALIYUN_PASSWORD"
+    echo "示例: export ALIYUN_USERNAME=your_username"
+    echo "示例: export ALIYUN_PASSWORD=your_password"
+    exit 1
+fi
+
+echo "$ALIYUN_PASSWORD" | docker login $REGISTRY -u $ALIYUN_USERNAME --password-stdin
 
 # 停止并删除旧容器
 echo "🛑 停止旧容器..."
@@ -38,16 +43,16 @@ docker system prune -f
 
 # 拉取最新镜像
 echo "📥 拉取最新镜像..."
-docker pull ${FULL_IMAGE_NAME}
+docker pull $FULL_IMAGE_NAME
 
 # 创建docker-compose.yml文件
-echo "📝 创建 docker-compose.yml..."
+echo "📝 创建docker-compose.yml..."
 cat > docker-compose.yml << EOF
 version: '3.8'
 
 services:
   myapi:
-    image: ${FULL_IMAGE_NAME}
+    image: $FULL_IMAGE_NAME
     ports:
       - "5201:5201"
     environment:
@@ -65,22 +70,22 @@ services:
       start_period: 40s
 EOF
 
-# 启动新容器
-echo "🚀 启动新容器..."
+# 启动服务
+echo "🚀 启动服务..."
 docker-compose up -d
 
 # 等待服务启动
 echo "⏳ 等待服务启动..."
-sleep 15
+sleep 10
 
-# 检查服务健康状态
-echo "🔍 检查服务健康状态..."
-if curl -f http://localhost:5201/docs > /dev/null 2>&1; then
-    echo "✅ 部署成功！"
+# 检查服务状态
+if docker-compose ps | grep -q "Up"; then
+    echo "✅ MyAPI部署成功！"
     echo "🌐 服务地址: http://localhost:5201"
     echo "📚 API文档: http://localhost:5201/docs"
+    echo "📦 镜像来源: 阿里云容器镜像服务"
 else
-    echo "❌ 部署失败，服务未正常启动"
-    docker-compose logs myapi
+    echo "❌ 服务启动失败"
+    docker-compose logs
     exit 1
 fi 

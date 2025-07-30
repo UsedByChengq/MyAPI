@@ -162,7 +162,7 @@ docker-compose up -d
 本项目配置了 GitHub Actions 实现自动部署。当代码推送到 `main` 分支时，会自动：
 
 1. 构建 Docker 镜像
-2. 推送到 [Harbor 私有仓库](http://harbor.5845.cn/)
+2. 推送到 [阿里云容器镜像服务](https://cr.console.aliyun.com/)
 3. 部署到服务器
 
 详细配置说明请查看 [GitHub Actions 配置指南](docs/github-actions-setup.md)。
