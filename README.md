@@ -157,6 +157,16 @@ docker run -p 5201:5201 myapi
 docker-compose up -d
 ```
 
+### GitHub Actions 自动部署
+
+本项目配置了 GitHub Actions 实现自动部署。当代码推送到 `main` 分支时，会自动：
+
+1. 构建 Docker 镜像
+2. 推送到 GitHub Container Registry
+3. 部署到服务器
+
+详细配置说明请查看 [GitHub Actions 配置指南](docs/github-actions-setup.md)。
+
 ## 配置说明
 
 | 配置项 | 说明 | 默认值 |
