@@ -21,10 +21,7 @@ class Settings(BaseSettings):
     
     # 静态文件配置
     static_img_dir: str = "static/images"
-    
-    @property
-    def base_image_url(self) -> str:
-        return f"{self.base_url}/static/images/"
+    base_image_url: str = "https://myapi.5845.cn/static/images/"
     
     # 网络请求配置
     request_timeout: int = 10
