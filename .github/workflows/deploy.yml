@@ -100,8 +100,8 @@ jobs:
           # 检查服务状态
           if docker-compose ps | grep -q "Up"; then
             echo "✅ MyAPI部署成功！"
-            echo "🌐 服务地址: http://${{ secrets.SERVER_HOST }}:5201"
-            echo "📚 API文档: http://${{ secrets.SERVER_HOST }}:5201/docs"
+            echo "🌐 服务地址: https://myapi.5845.cn"
+            echo "📚 API文档: https://myapi.5845.cn/docs"
             echo "📦 镜像来源: 阿里云容器镜像服务"
           else
             echo "❌ 服务启动失败"

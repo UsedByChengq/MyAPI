@@ -2,6 +2,10 @@
 
 一个基于FastAPI的通用API服务，支持多种功能模块。
 
+🌐 **在线地址**: https://myapi.5845.cn
+
+📚 **API文档**: https://myapi.5845.cn/docs
+
 ## 功能特性
 
 - 🚀 基于FastAPI构建，性能优异
@@ -174,6 +178,7 @@ docker-compose up -d
 | `APP_NAME` | 应用名称 | MyAPI |
 | `APP_VERSION` | 应用版本 | 1.0.0 |
 | `DEBUG` | 调试模式 | false |
+| `BASE_URL` | 应用域名 | https://myapi.5845.cn |
 | `CORS_ORIGINS` | CORS允许的源 | ["*"] |
 | `STATIC_IMG_DIR` | 静态图片目录 | static/images |
 | `BASE_IMAGE_URL` | 图片基础URL | https://yourdomain.com/static/images/ |
