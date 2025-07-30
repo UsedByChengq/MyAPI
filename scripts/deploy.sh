@@ -6,9 +6,9 @@
 set -e
 
 # 配置变量
-REGISTRY="ghcr.io"
-REPOSITORY="UsedByChengq/MyAPI"
-IMAGE_NAME="${REGISTRY}/${REPOSITORY}"
+REGISTRY="harbor.5845.cn"
+PROJECT="myapi"
+IMAGE_NAME="${REGISTRY}/${PROJECT}/myapi"
 TAG=${1:-main}
 FULL_IMAGE_NAME="${IMAGE_NAME}:${TAG}"
 

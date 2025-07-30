@@ -5,8 +5,9 @@
 ## 📋 前置条件
 
 1. **GitHub 仓库**: 确保代码已推送到 GitHub
-2. **服务器**: 需要一台运行 Docker 的服务器
-3. **GitHub Secrets**: 需要在仓库中配置服务器连接信息
+2. **Harbor 私有仓库**: 使用 [Harbor](http://harbor.5845.cn/) 作为私有镜像仓库
+3. **服务器**: 需要一台运行 Docker 的服务器
+4. **GitHub Secrets**: 需要在仓库中配置服务器连接信息和Harbor认证信息
 
 ## 🔧 配置步骤
 
@@ -16,12 +17,22 @@
 
 | Secret 名称 | 说明 | 示例值 |
 |------------|------|--------|
+| `HARBOR_USERNAME` | Harbor用户名 | `admin` |
+| `HARBOR_PASSWORD` | Harbor密码 | `your-password` |
 | `SERVER_HOST` | 服务器IP地址 | `192.168.1.100` |
 | `SERVER_USERNAME` | SSH用户名 | `root` |
 | `SERVER_SSH_KEY` | SSH私钥内容 | `-----BEGIN OPENSSH PRIVATE KEY-----...` |
 | `SERVER_PORT` | SSH端口 | `22` |
 
-### 2. 生成 SSH 密钥对
+### 2. Harbor 仓库配置
+
+确保在 Harbor 中已创建项目：
+- **项目名称**: `myapi`
+- **访问级别**: 私有
+- **镜像名称**: `myapi`
+- **完整镜像路径**: `harbor.5845.cn/myapi/myapi`
+
+### 3. 生成 SSH 密钥对
 
 如果还没有 SSH 密钥，请生成一对：
 
@@ -36,7 +47,7 @@ ssh-copy-id -i ~/.ssh/id_ed25519.pub username@server-ip
 cat ~/.ssh/id_ed25519
 ```
 
-### 3. 服务器准备
+### 4. 服务器准备
 
 确保服务器已安装 Docker 和 Docker Compose：
 
@@ -53,7 +64,7 @@ sudo systemctl start docker
 sudo systemctl enable docker
 ```
 
-### 4. 创建部署目录
+### 5. 创建部署目录
 
 在服务器上创建部署目录：
 
@@ -68,7 +79,7 @@ cd /opt/myapi
 
 1. **代码推送**: 向 `main` 分支推送代码
 2. **触发构建**: GitHub Actions 自动触发构建流程
-3. **构建镜像**: 构建 Docker 镜像并推送到 GitHub Container Registry
+3. **构建镜像**: 构建 Docker 镜像并推送到 Harbor 私有仓库
 4. **部署到服务器**: 通过 SSH 连接到服务器并部署新镜像
 5. **健康检查**: 验证服务是否正常启动
 
@@ -100,16 +111,22 @@ docs/
 
 ### 常见问题
 
-1. **SSH 连接失败**
+1. **Harbor 认证失败**
+   - 检查 Harbor 用户名和密码是否正确
+   - 确认用户有推送镜像到 `myapi` 项目的权限
+   - 检查 Harbor 服务是否正常运行
+
+2. **SSH 连接失败**
    - 检查服务器 IP 和端口是否正确
    - 确认 SSH 密钥已正确配置
    - 检查服务器防火墙设置
 
-2. **Docker 镜像拉取失败**
-   - 确认 GitHub Container Registry 权限设置
-   - 检查网络连接
+3. **Docker 镜像拉取失败**
+   - 确认服务器可以访问 Harbor 仓库
+   - 检查网络连接和DNS解析
+   - 确认服务器已登录到 Harbor
 
-3. **服务启动失败**
+4. **服务启动失败**
    - 查看容器日志：`docker-compose logs myapi`
    - 检查端口是否被占用
    - 确认环境变量配置正确
@@ -136,6 +153,14 @@ curl -f http://localhost:5201/docs
 - 部署日志
 - 错误信息
 
+### Harbor 镜像管理
+
+在 [Harbor 控制台](http://harbor.5845.cn/) 可以：
+- 查看镜像版本
+- 管理镜像标签
+- 设置镜像扫描策略
+- 配置镜像复制规则
+
 ### 服务器监控
 
 ```bash
@@ -151,17 +176,30 @@ df -h
 
 ## 🔒 安全建议
 
-1. **使用专用用户**: 不要使用 root 用户进行部署
-2. **限制 SSH 访问**: 只允许必要的 IP 地址访问
-3. **定期更新**: 定期更新 Docker 镜像和系统
-4. **备份数据**: 定期备份重要数据
-5. **监控日志**: 定期检查系统日志
+1. **Harbor 安全**:
+   - 使用强密码
+   - 定期更新 Harbor 版本
+   - 配置镜像扫描
+   - 设置访问控制策略
+
+2. **服务器安全**:
+   - 使用专用用户进行部署
+   - 限制 SSH 访问
+   - 定期更新系统
+   - 监控系统日志
+
+3. **镜像安全**:
+   - 定期更新基础镜像
+   - 扫描镜像漏洞
+   - 使用最小化基础镜像
+   - 定期清理旧镜像
 
 ## 📞 支持
 
 如果遇到问题，请：
 
 1. 查看 GitHub Actions 日志
-2. 检查服务器容器日志
-3. 确认所有配置是否正确
-4. 联系技术支持 
+2. 检查 Harbor 镜像仓库状态
+3. 查看服务器容器日志
+4. 确认所有配置是否正确
+5. 联系技术支持 
