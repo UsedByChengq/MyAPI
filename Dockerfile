@@ -24,6 +24,11 @@ RUN pip install --no-cache-dir fastapi uvicorn pydantic-settings beautifulsoup4 
 # 创建非root用户
 RUN useradd --create-home --shell /bin/bash app && \
     chown -R app:app /app
+
+# 创建static/images目录并设置权限
+RUN mkdir -p /app/static/images && \
+    chown -R app:app /app/static
+
 USER app
 
 # 暴露端口

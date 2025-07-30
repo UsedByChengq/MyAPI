@@ -23,7 +23,15 @@ class WeChatService:
     def __init__(self):
         self.headers = {"User-Agent": settings.user_agent}
         self.static_img_dir = Path(settings.static_img_dir)
-        self.static_img_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            self.static_img_dir.mkdir(parents=True, exist_ok=True)
+        except PermissionError:
+            # 如果权限不足，尝试使用临时目录
+            import tempfile
+            temp_dir = Path(tempfile.gettempdir()) / "myapi_images"
+            temp_dir.mkdir(parents=True, exist_ok=True)
+            self.static_img_dir = temp_dir
+            print(f"使用临时目录存储图片: {temp_dir}")
     
     def validate_url(self, url: str) -> bool:
         """验证URL是否为有效的微信公众号文章链接"""

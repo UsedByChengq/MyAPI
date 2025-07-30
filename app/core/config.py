@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     
     # 静态文件配置
     static_img_dir: str = "static/images"
-    base_image_url: str = "https://yourdomain.com/static/images/"
+    base_image_url: str = "/static/images/"
     
     # 网络请求配置
     request_timeout: int = 10
