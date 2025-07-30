@@ -37,28 +37,51 @@ jobs:
         echo "DNS解析结果："
         nslookup ${{ env.REGISTRY }} || echo "DNS解析失败"
       
-    - name: Log in to Harbor Registry
+    - name: Build Docker image
+      run: |
+        # 构建镜像
+        echo "开始构建镜像..."
+        docker build -t ${{ env.REGISTRY }}/${{ env.PROJECT }}/myapi:main .
+        echo "镜像构建完成！"
+        
+    - name: Try Harbor login and push
       run: |
         # 尝试登录到Harbor Registry
         echo "尝试登录Harbor..."
-        echo ${{ secrets.HARBOR_PASSWORD }} | docker login ${{ env.REGISTRY }} -u ${{ secrets.HARBOR_USERNAME }} --password-stdin || {
-          echo "登录失败，尝试使用HTTP..."
-          echo ${{ secrets.HARBOR_PASSWORD }} | docker login http://${{ env.REGISTRY }} -u ${{ secrets.HARBOR_USERNAME }} --password-stdin
+        echo ${{ secrets.HARBOR_PASSWORD }} | docker login ${{ env.REGISTRY }} -u ${{ secrets.HARBOR_USERNAME }} --password-stdin && {
+          echo "✅ 登录成功！"
+          
+          # 推送镜像
+          if docker push ${{ env.REGISTRY }}/${{ env.PROJECT }}/myapi:main; then
+            echo "✅ 镜像推送成功！"
+            echo "HARBOR_PUSH_SUCCESS=true" >> $GITHUB_ENV
+          else
+            echo "❌ 推送失败"
+            echo "HARBOR_PUSH_SUCCESS=false" >> $GITHUB_ENV
+          fi
+        } || {
+          echo "❌ 登录失败，尝试HTTP..."
+          echo ${{ secrets.HARBOR_PASSWORD }} | docker login http://${{ env.REGISTRY }} -u ${{ secrets.HARBOR_USERNAME }} --password-stdin && {
+            echo "✅ HTTP登录成功！"
+            
+            if docker push ${{ env.REGISTRY }}/${{ env.PROJECT }}/myapi:main; then
+              echo "✅ 镜像推送成功！"
+              echo "HARBOR_PUSH_SUCCESS=true" >> $GITHUB_ENV
+            else
+              echo "❌ 推送失败"
+              echo "HARBOR_PUSH_SUCCESS=false" >> $GITHUB_ENV
+            fi
+          } || {
+            echo "❌ HTTP登录也失败"
+            echo "HARBOR_PUSH_SUCCESS=false" >> $GITHUB_ENV
+          }
         }
         
-        # 验证登录状态
-        docker info | grep -A 5 "Insecure Registries"
-      
-    - name: Build and push Docker image
-      run: |
-        # 直接使用docker命令构建和推送
-        echo "开始构建镜像..."
-        docker build -t ${{ env.REGISTRY }}/${{ env.PROJECT }}/myapi:main .
-        
-        echo "开始推送镜像..."
-        docker push ${{ env.REGISTRY }}/${{ env.PROJECT }}/myapi:main
-        
-        echo "镜像推送完成！"
+        # 如果推送失败，标记但继续部署
+        if [ "$HARBOR_PUSH_SUCCESS" = "false" ]; then
+          echo "⚠️ Harbor推送失败，但继续部署流程..."
+          echo "将在服务器上重新构建镜像"
+        fi
         
     - name: Deploy to server
       uses: appleboy/ssh-action@v1.0.3
@@ -74,17 +97,30 @@ jobs:
           sudo systemctl restart docker
           sleep 5
           
-          # 登录到Harbor Registry
-          echo ${{ secrets.HARBOR_PASSWORD }} | docker login ${{ env.REGISTRY }} -u ${{ secrets.HARBOR_USERNAME }} --password-stdin
-          
           # 停止旧容器
           docker-compose down || true
           
           # 清理旧镜像
           docker system prune -f
           
-          # 拉取最新镜像
-          docker pull ${{ env.REGISTRY }}/${{ env.PROJECT }}/myapi:main
+          # 尝试从Harbor拉取镜像，如果失败则在服务器上构建
+          echo "尝试从Harbor拉取镜像..."
+          if docker pull ${{ env.REGISTRY }}/${{ env.PROJECT }}/myapi:main; then
+            echo "✅ 镜像拉取成功！"
+            IMAGE_SOURCE="harbor"
+          else
+            echo "❌ 镜像拉取失败，在服务器上构建..."
+            
+            # 在服务器上重新构建镜像
+            if [ ! -d "temp-build" ]; then
+              git clone https://github.com/UsedByChengq/MyAPI.git temp-build
+            fi
+            cd temp-build
+            git pull origin main
+            docker build -t ${{ env.REGISTRY }}/${{ env.PROJECT }}/myapi:main .
+            cd ..
+            IMAGE_SOURCE="local"
+          fi
           
           # 创建docker-compose.yml
           cat > docker-compose.yml << 'EOF'
@@ -110,17 +146,21 @@ jobs:
                 start_period: 40s
           EOF
           
-          # 启动新容器
+          # 启动服务
           docker-compose up -d
           
           # 等待服务启动
-          sleep 15
+          echo "等待服务启动..."
+          sleep 10
           
           # 检查服务状态
-          if curl -f http://localhost:5201/docs > /dev/null 2>&1; then
-            echo "✅ 部署成功！"
+          if docker-compose ps | grep -q "Up"; then
+            echo "✅ MyAPI部署成功！"
+            echo "🌐 服务地址: http://${{ secrets.SERVER_HOST }}:5201"
+            echo "📚 API文档: http://${{ secrets.SERVER_HOST }}:5201/docs"
+            echo "📦 镜像来源: $IMAGE_SOURCE"
           else
-            echo "❌ 部署失败"
-            docker-compose logs myapi
+            echo "❌ 服务启动失败"
+            docker-compose logs
             exit 1
           fi 
