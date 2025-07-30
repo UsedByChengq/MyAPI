@@ -50,7 +50,6 @@ async def get_wechat_article(
 
 @router.get(
     "/wechat/markdown",
-    response_class=Response,
     responses={
         400: {"description": "无效的URL"},
         502: {"description": "网络请求失败"},
@@ -62,7 +61,7 @@ async def get_wechat_article(
 async def get_wechat_article_markdown(
     url: str = Query(..., description="微信公众号文章链接"),
     service: wechat_service = Depends(get_wechat_service)
-) -> Response:
+) -> str:
     """
     获取微信公众号文章内容（Markdown格式）
     
@@ -72,20 +71,8 @@ async def get_wechat_article_markdown(
     """
     try:
         markdown_content = service.get_article_markdown(url)
-        return Response(
-            content=markdown_content,
-            media_type="text/markdown",
-            headers={"Content-Disposition": "attachment; filename=article.md"}
-        )
+        return markdown_content
     except WeChatScraperException as e:
-        return Response(
-            content=f"错误: {e.detail}",
-            status_code=e.status_code,
-            media_type="text/plain"
-        )
+        raise HTTPException(status_code=e.status_code, detail=e.detail)
     except Exception as e:
-        return Response(
-            content=f"服务内部错误: {str(e)}",
-            status_code=500,
-            media_type="text/plain"
-        ) 
+        raise HTTPException(status_code=500, detail=f"服务内部错误: {str(e)}") 
