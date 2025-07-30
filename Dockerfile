@@ -6,13 +6,32 @@ RUN pip install --no-cache-dir fastapi uvicorn beautifulsoup4 markdownify reques
 
 # 创建目录
 WORKDIR /app
-COPY . /app
 
-# 创建图片目录（用于静态资源）
-RUN mkdir -p /app/static/images
+# 安装系统依赖
+RUN apt-get update && apt-get install -y \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# 复制项目文件
+COPY pyproject.toml uv.lock README.md ./
+COPY app/ ./app/
+COPY static/ ./static/
+COPY run.py ./
+
+# 安装Python依赖
+RUN pip install --no-cache-dir fastapi uvicorn pydantic-settings beautifulsoup4 markdownify requests
+
+# 创建非root用户
+RUN useradd --create-home --shell /bin/bash app && \
+    chown -R app:app /app
+USER app
 
 # 暴露端口
 EXPOSE 5201
 
-# 启动 FastAPI 应用（监听端口 5201）
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "5201"]
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:5201/docs || exit 1
+
+# 启动命令
+CMD ["python", "run.py"]

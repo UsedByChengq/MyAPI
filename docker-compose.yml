@@ -1,15 +1,20 @@
-version: "3.9"
+version: '3.8'
 
 services:
-  wechat-api:
-    container_name: wechat-api
-    build:
-      context: .
-      dockerfile: Dockerfile
+  myapi:
+    build: .
     ports:
       - "5201:5201"
-    volumes:
-      - ./static:/app/static   # 挂载静态资源目录，确保图片持久化
     environment:
-      - TZ=Asia/Shanghai
+      - APP_NAME=MyAPI
+      - APP_VERSION=1.0.0
+      - DEBUG=false
+    volumes:
+      - ./static:/app/static
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5201/docs"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
