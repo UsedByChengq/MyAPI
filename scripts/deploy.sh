@@ -21,6 +21,13 @@ if ! docker info > /dev/null 2>&1; then
     exit 1
 fi
 
+# 配置Docker使用不安全的registry（解决TLS证书问题）
+echo "🔧 配置Docker registry设置..."
+sudo mkdir -p /etc/docker
+echo "{\"insecure-registries\": [\"${REGISTRY}\"]}" | sudo tee /etc/docker/daemon.json
+sudo systemctl restart docker
+sleep 5
+
 # 停止并删除旧容器
 echo "🛑 停止旧容器..."
 docker-compose down || true

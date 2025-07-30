@@ -102,6 +102,12 @@ jobs:
         key: ${{ secrets.SERVER_SSH_KEY }}
         port: ${{ secrets.SERVER_PORT }}
         script: |
+          # 配置Docker使用不安全的registry
+          sudo mkdir -p /etc/docker
+          echo '{"insecure-registries": ["${{ env.REGISTRY }}"]}' | sudo tee /etc/docker/daemon.json
+          sudo systemctl restart docker
+          sleep 5
+          
           # 登录到Harbor Registry
           echo ${{ secrets.HARBOR_PASSWORD }} | docker login ${{ env.REGISTRY }} -u ${{ secrets.HARBOR_USERNAME }} --password-stdin
           

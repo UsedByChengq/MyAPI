@@ -64,6 +64,20 @@ sudo systemctl start docker
 sudo systemctl enable docker
 ```
 
+#### 配置Docker使用不安全的Harbor Registry
+
+由于Harbor使用自签名证书，需要配置Docker允许不安全的registry：
+
+```bash
+# 方法1：使用提供的脚本（推荐）
+sudo ./scripts/setup-docker-registry.sh
+
+# 方法2：手动配置
+sudo mkdir -p /etc/docker
+echo '{"insecure-registries": ["harbor.5845.cn"]}' | sudo tee /etc/docker/daemon.json
+sudo systemctl restart docker
+```
+
 ### 5. 创建部署目录
 
 在服务器上创建部署目录：
@@ -125,6 +139,8 @@ docs/
    - 确认服务器可以访问 Harbor 仓库
    - 检查网络连接和DNS解析
    - 确认服务器已登录到 Harbor
+   - 检查Docker是否配置了insecure-registries
+   - 运行 `sudo ./scripts/setup-docker-registry.sh` 配置Docker
 
 4. **服务启动失败**
    - 查看容器日志：`docker-compose logs myapi`
