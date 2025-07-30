@@ -21,25 +21,28 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
       
-    - name: Build Docker image
+        - name: Verify Docker
       run: |
-        # 构建镜像
-        echo "开始构建镜像..."
-        docker build -t ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.PROJECT }}:main .
-        echo "镜像构建完成！"
+        # 验证Docker是否正常工作
+        docker --version
+        docker info
+        echo "Docker验证完成"
         
     - name: Log in to Alibaba Cloud Container Registry
-      run: |
-        # 登录到阿里云容器镜像服务
-        echo "登录到阿里云容器镜像服务..."
-        echo ${{ secrets.ALIYUN_PASSWORD }} | docker login ${{ env.REGISTRY }} -u ${{ secrets.ALIYUN_USERNAME }} --password-stdin
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ secrets.ALIYUN_USERNAME }}
+        password: ${{ secrets.ALIYUN_PASSWORD }}
         
-    - name: Push Docker image
-      run: |
-        # 推送镜像到阿里云仓库
-        echo "推送镜像到阿里云仓库..."
-        docker push ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.PROJECT }}:main
-        echo "✅ 镜像推送成功！"
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: true
+        tags: ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ env.PROJECT }}:main
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
         
     - name: Deploy to server
       uses: appleboy/ssh-action@v1.0.3
