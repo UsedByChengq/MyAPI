@@ -1,0 +1,15 @@
+version: "3.9"
+
+services:
+  wechat-api:
+    container_name: wechat-api
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5201:5201"
+    volumes:
+      - ./static:/app/static   # 挂载静态资源目录，确保图片持久化
+    environment:
+      - TZ=Asia/Shanghai
+    restart: unless-stopped
