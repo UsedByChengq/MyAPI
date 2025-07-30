@@ -1,4 +1,4 @@
-from pydantic import BaseModel, HttpUrl, validator
+from pydantic import BaseModel, HttpUrl, field_validator, ConfigDict
 from typing import Optional
 
 
@@ -6,7 +6,8 @@ class WeChatArticleRequest(BaseModel):
     """微信公众号文章请求模型"""
     url: HttpUrl
     
-    @validator('url')
+    @field_validator('url')
+    @classmethod
     def validate_wechat_url(cls, v):
         """验证是否为微信公众号URL"""
         url_str = str(v)
@@ -21,14 +22,15 @@ class WeChatArticleResponse(BaseModel):
     content: str
     cover: Optional[str] = None
     
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "title": "文章标题",
                 "content": "<div>文章内容HTML</div>",
                 "cover": "https://example.com/cover.jpg"
             }
         }
+    )
 
 
 class ErrorResponse(BaseModel):
@@ -36,10 +38,11 @@ class ErrorResponse(BaseModel):
     error: str
     detail: Optional[str] = None
     
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "error": "错误信息",
                 "detail": "详细错误描述"
             }
-        } 
+        }
+    ) 

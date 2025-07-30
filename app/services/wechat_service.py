@@ -42,7 +42,7 @@ class WeChatService:
             resp = requests.get(url, headers=self.headers, timeout=settings.request_timeout)
             resp.encoding = 'utf-8'
             resp.raise_for_status()
-        except RequestException as e:
+        except (RequestException, Exception) as e:
             raise NetworkRequestException(f"网络请求失败: {str(e)}")
         
         try:
