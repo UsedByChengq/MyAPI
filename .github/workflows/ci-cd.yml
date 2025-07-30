@@ -33,7 +33,11 @@ jobs:
         
     - name: Install dependencies
       run: |
-        uv sync
+        # 安装项目依赖（包括开发依赖）
+        uv sync --extra dev
+        
+        # 验证pytest是否可用
+        uv run pytest --version
         
     - name: Run tests
       run: |
@@ -66,13 +70,27 @@ jobs:
         echo '{"insecure-registries": ["${{ env.REGISTRY }}"]}' | sudo tee /etc/docker/daemon.json
         sudo systemctl restart docker
         sleep 5
+        
+        # 测试网络连接
+        echo "测试网络连接..."
+        curl -I http://${{ env.REGISTRY }} || echo "HTTP连接失败，尝试HTTPS..."
+        curl -I https://${{ env.REGISTRY }} || echo "HTTPS连接也失败"
+        
+        # 显示DNS解析结果
+        echo "DNS解析结果："
+        nslookup ${{ env.REGISTRY }} || echo "DNS解析失败"
       
     - name: Log in to Harbor Registry
-      uses: docker/login-action@v3
-      with:
-        registry: ${{ env.REGISTRY }}
-        username: ${{ secrets.HARBOR_USERNAME }}
-        password: ${{ secrets.HARBOR_PASSWORD }}
+      run: |
+        # 尝试登录到Harbor Registry
+        echo "尝试登录Harbor..."
+        echo ${{ secrets.HARBOR_PASSWORD }} | docker login ${{ env.REGISTRY }} -u ${{ secrets.HARBOR_USERNAME }} --password-stdin || {
+          echo "登录失败，尝试使用HTTP..."
+          echo ${{ secrets.HARBOR_PASSWORD }} | docker login http://${{ env.REGISTRY }} -u ${{ secrets.HARBOR_USERNAME }} --password-stdin
+        }
+        
+        # 验证登录状态
+        docker info | grep -A 5 "Insecure Registries"
         
     - name: Extract metadata
       id: meta
