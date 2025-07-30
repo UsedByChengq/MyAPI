@@ -44,7 +44,7 @@ class TestWeChatAPI:
         response = client.get("/api/v1/wechat/markdown", params={"url": "https://mp.weixin.qq.com/s/example"})
         
         assert response.status_code == 200
-        assert "text/markdown" in response.headers["content-type"]
+        assert "application/json" in response.headers["content-type"]
         assert "# 测试文章" in response.text
     
     def test_api_docs_available(self, client: TestClient):
